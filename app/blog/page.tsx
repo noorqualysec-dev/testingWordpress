@@ -14,7 +14,7 @@ export const metadata = {
 export const dynamic = "force-dynamic";
 
 export default async function BlogPage() {
-  const posts = await getLatestPosts(10);
+  const posts = await getLatestPosts(20);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-12 sm:py-16">
