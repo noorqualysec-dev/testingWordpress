@@ -3,7 +3,7 @@ import Link from "next/link";
 import {
   formatPostDate,
   getFeaturedImage,
-  getLatestPosts,
+  getPostsPage,
 } from "@/lib/wordpress";
 
 export const metadata = {
@@ -13,18 +13,91 @@ export const metadata = {
 
 export const dynamic = "force-dynamic";
 
-export default async function BlogPage() {
-  const posts = await getLatestPosts(20);
+interface BlogPageProps {
+  searchParams: Promise<{ page?: string | string[] }>;
+}
+
+function getPageNumber(value: string | string[] | undefined) {
+  const page = Array.isArray(value) ? value[0] : value;
+  const pageNumber = Number(page ?? 1);
+
+  if (!Number.isInteger(pageNumber) || pageNumber < 1) {
+    return 1;
+  }
+
+  return pageNumber;
+}
+
+function getPageHref(page: number) {
+  return page === 1 ? "/blog" : `/blog?page=${page}`;
+}
+
+function BlogPagination({
+  currentPage,
+  totalPages,
+}: {
+  currentPage: number;
+  totalPages: number;
+}) {
+  const hasPreviousPage = currentPage > 1;
+  const hasNextPage = currentPage < totalPages;
+
+  return (
+    <nav
+      aria-label="Blog pagination"
+      className="mt-10 flex items-center justify-between border-t border-neutral-200 pt-6"
+    >
+      {hasPreviousPage ? (
+        <Link
+          href={getPageHref(currentPage - 1)}
+          className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 transition hover:border-teal-700 hover:text-teal-700"
+        >
+          Previous
+        </Link>
+      ) : (
+        <span className="rounded-md border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-400">
+          Previous
+        </span>
+      )}
+
+      <span className="text-sm font-medium text-neutral-600">
+        {currentPage} / {totalPages}
+      </span>
+
+      {hasNextPage ? (
+        <Link
+          href={getPageHref(currentPage + 1)}
+          className="rounded-md border border-neutral-300 px-4 py-2 text-sm font-medium text-neutral-900 transition hover:border-teal-700 hover:text-teal-700"
+        >
+          Next
+        </Link>
+      ) : (
+        <span className="rounded-md border border-neutral-200 px-4 py-2 text-sm font-medium text-neutral-400">
+          Next
+        </span>
+      )}
+    </nav>
+  );
+}
+
+export default async function BlogPage({ searchParams }: BlogPageProps) {
+  const currentPage = getPageNumber((await searchParams).page);
+  const { posts, totalPages, totalPosts } = await getPostsPage(currentPage, 10);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-12 sm:py-16">
-      <div className="mb-10 max-w-2xl">
-        <p className="text-sm font-medium uppercase tracking-normal text-teal-700">
-          Blog
+      <div className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+        <div className="max-w-2xl">
+          <p className="text-sm font-medium uppercase tracking-normal text-teal-700">
+            Blog
+          </p>
+          <h1 className="mt-3 text-4xl font-semibold tracking-normal text-neutral-950 sm:text-5xl">
+            Latest Articles
+          </h1>
+        </div>
+        <p className="text-sm font-medium text-neutral-600">
+          Page {currentPage} of {totalPages} &middot; {totalPosts} posts
         </p>
-        <h1 className="mt-3 text-4xl font-semibold tracking-normal text-neutral-950 sm:text-5xl">
-          Latest Articles
-        </h1>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,6 +138,8 @@ export default async function BlogPage() {
           );
         })}
       </div>
+
+      <BlogPagination currentPage={currentPage} totalPages={totalPages} />
     </main>
   );
 }
