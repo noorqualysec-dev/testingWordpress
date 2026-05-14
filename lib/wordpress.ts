@@ -30,7 +30,7 @@ export function formatPostDate(date: string) {
   }).format(new Date(date));
 }
 
-export async function getLatestPosts(count = 10) {
+export async function getLatestPosts(count = 20) {
   const url = new URL(`${WORDPRESS_API_BASE}/posts`);
   url.searchParams.set("per_page", String(count));
   url.searchParams.set("orderby", "date");
