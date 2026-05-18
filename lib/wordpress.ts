@@ -75,6 +75,21 @@ export async function getPostsPage(
   };
 }
 
+export async function getAllPostSlugs(count = 100) {
+  const url = new URL(`${WORDPRESS_API_BASE}/posts`);
+  url.searchParams.set("per_page", String(count));
+  url.searchParams.set("_fields", "slug"); // Trims down data size for faster build time
+
+  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+
+  if (!res.ok) {
+    throw new Error("Failed to fetch post slugs for SSG generation");
+  }
+
+  const posts = (await res.json()) as { slug: string }[];
+  return posts;
+}
+
 export async function getPostBySlug(slug: string) {
   const url = new URL(`${WORDPRESS_API_BASE}/posts`);
   url.searchParams.set("slug", slug);
