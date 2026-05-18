@@ -15,9 +15,13 @@ export interface WPPost {
   };
 }
 
-const WORDPRESS_API_BASE = "https://qualysec.com/wp-json/wp/v2";
+const WORDPRESS_API_BASE =
+  "https://floralwhite-wombat-415522.hostingersite.com/wp-json/wp/v2";
+const WORDPRESS_FALLBACK_API_BASE = "https://qualysec.com/wp-json/wp/v2";
 const REVALIDATE_SECONDS = 60;
 const DEFAULT_POSTS_PER_PAGE = 10;
+
+type ConfigureWordPressUrl = (url: URL) => void;
 
 export function getFeaturedImage(post: WPPost) {
   return post._embedded?.["wp:featuredmedia"]?.[0];
@@ -31,14 +35,32 @@ export function formatPostDate(date: string) {
   }).format(new Date(date));
 }
 
-export async function getLatestPosts(count = DEFAULT_POSTS_PER_PAGE) {
-  const url = new URL(`${WORDPRESS_API_BASE}/posts`);
-  url.searchParams.set("per_page", String(count));
-  url.searchParams.set("orderby", "date");
-  url.searchParams.set("order", "desc");
-  url.searchParams.set("_embed", "1");
+async function fetchWordPress(
+  path: string,
+  configureUrl: ConfigureWordPressUrl,
+) {
+  const fetchFrom = async (baseUrl: string) => {
+    const url = new URL(`${baseUrl}${path}`);
+    configureUrl(url);
 
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+    return fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  };
+
+  try {
+    return await fetchFrom(WORDPRESS_API_BASE);
+  } catch (error) {
+    console.error("Primary WordPress endpoint failed, using fallback:", error);
+    return fetchFrom(WORDPRESS_FALLBACK_API_BASE);
+  }
+}
+
+export async function getLatestPosts(count = DEFAULT_POSTS_PER_PAGE) {
+  const res = await fetchWordPress("/posts", (url) => {
+    url.searchParams.set("per_page", String(count));
+    url.searchParams.set("orderby", "date");
+    url.searchParams.set("order", "desc");
+    url.searchParams.set("_embed", "1");
+  });
 
   if (!res.ok) {
     throw new Error("Failed to load WordPress posts");
@@ -51,14 +73,13 @@ export async function getPostsPage(
   page = 1,
   perPage = DEFAULT_POSTS_PER_PAGE,
 ) {
-  const url = new URL(`${WORDPRESS_API_BASE}/posts`);
-  url.searchParams.set("page", String(page));
-  url.searchParams.set("per_page", String(perPage));
-  url.searchParams.set("orderby", "date");
-  url.searchParams.set("order", "desc");
-  url.searchParams.set("_embed", "1");
-
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  const res = await fetchWordPress("/posts", (url) => {
+    url.searchParams.set("page", String(page));
+    url.searchParams.set("per_page", String(perPage));
+    url.searchParams.set("orderby", "date");
+    url.searchParams.set("order", "desc");
+    url.searchParams.set("_embed", "1");
+  });
 
   if (res.status === 400) {
     notFound();
@@ -76,11 +97,10 @@ export async function getPostsPage(
 }
 
 export async function getAllPostSlugs(count = 100) {
-  const url = new URL(`${WORDPRESS_API_BASE}/posts`);
-  url.searchParams.set("per_page", String(count));
-  url.searchParams.set("_fields", "slug"); // Trims down data size for faster build time
-
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  const res = await fetchWordPress("/posts", (url) => {
+    url.searchParams.set("per_page", String(count));
+    url.searchParams.set("_fields", "slug");
+  });
 
   if (!res.ok) {
     throw new Error("Failed to fetch post slugs for SSG generation");
@@ -91,11 +111,10 @@ export async function getAllPostSlugs(count = 100) {
 }
 
 export async function getPostBySlug(slug: string) {
-  const url = new URL(`${WORDPRESS_API_BASE}/posts`);
-  url.searchParams.set("slug", slug);
-  url.searchParams.set("_embed", "1");
-
-  const res = await fetch(url, { next: { revalidate: REVALIDATE_SECONDS } });
+  const res = await fetchWordPress("/posts", (url) => {
+    url.searchParams.set("slug", slug);
+    url.searchParams.set("_embed", "1");
+  });
 
   if (!res.ok) {
     notFound();
