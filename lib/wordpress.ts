@@ -1,4 +1,41 @@
 import { notFound } from "next/navigation";
+import { cache } from "react";
+import type { Metadata } from "next";
+
+interface WPYoastImage {
+  url?: string;
+  width?: number;
+  height?: number;
+  type?: string;
+}
+
+interface WPYoastHeadJson {
+  title?: string;
+  description?: string;
+  canonical?: string;
+  robots?: {
+    index?: string;
+    follow?: string;
+    "max-snippet"?: string;
+    "max-image-preview"?: string;
+    "max-video-preview"?: string;
+  };
+  og_locale?: string;
+  og_type?: string;
+  og_title?: string;
+  og_description?: string;
+  og_url?: string;
+  og_site_name?: string;
+  og_image?: WPYoastImage[];
+  article_published_time?: string;
+  article_modified_time?: string;
+  author?: string;
+  twitter_card?: string;
+  twitter_title?: string;
+  twitter_description?: string;
+  twitter_image?: string | WPYoastImage[];
+  schema?: unknown;
+}
 
 export interface WPPost {
   id: number;
@@ -7,6 +44,7 @@ export interface WPPost {
   title: { rendered: string };
   excerpt: { rendered: string };
   content: { rendered: string };
+  yoast_head_json?: WPYoastHeadJson;
   _embedded?: {
     "wp:featuredmedia"?: Array<{
       source_url?: string;
@@ -33,6 +71,65 @@ export function formatPostDate(date: string) {
     day: "numeric",
     year: "numeric",
   }).format(new Date(date));
+}
+
+export function getYoastStructuredData(post: WPPost) {
+  const schema = post.yoast_head_json?.schema;
+
+  if (!schema) {
+    return undefined;
+  }
+
+  return JSON.stringify(schema).replace(/</g, "\\u003c");
+}
+
+function stripHtml(value: string) {
+  return value.replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim();
+}
+
+function getYoastImages(images: WPYoastImage[] | undefined) {
+  return images
+    ?.filter((image) => image.url)
+    .map((image) => ({
+      url: image.url as string,
+      width: image.width,
+      height: image.height,
+      type: image.type,
+    }));
+}
+
+function getTwitterImage(image: WPYoastHeadJson["twitter_image"]) {
+  if (typeof image === "string") {
+    return image;
+  }
+
+  return getYoastImages(image)?.[0]?.url;
+}
+
+function getRobots(robots: WPYoastHeadJson["robots"]): Metadata["robots"] {
+  if (!robots) {
+    return undefined;
+  }
+
+  return {
+    index: robots.index !== "noindex",
+    follow: robots.follow !== "nofollow",
+    googleBot: {
+      index: robots.index !== "noindex",
+      follow: robots.follow !== "nofollow",
+      "max-snippet": robots["max-snippet"]
+        ? Number(robots["max-snippet"])
+        : undefined,
+      "max-image-preview": robots["max-image-preview"] as
+        | "none"
+        | "standard"
+        | "large"
+        | undefined,
+      "max-video-preview": robots["max-video-preview"]
+        ? Number(robots["max-video-preview"])
+        : undefined,
+    },
+  };
 }
 
 async function fetchWordPress(
@@ -110,7 +207,7 @@ export async function getAllPostSlugs(count = 100) {
   return posts;
 }
 
-export async function getPostBySlug(slug: string) {
+export const getPostBySlug = cache(async function getPostBySlug(slug: string) {
   const res = await fetchWordPress("/posts", (url) => {
     url.searchParams.set("slug", slug);
     url.searchParams.set("_embed", "1");
@@ -127,4 +224,54 @@ export async function getPostBySlug(slug: string) {
   }
 
   return posts[0];
+});
+
+export async function getPostSeoMetadata(slug: string): Promise<Metadata> {
+  const post = await getPostBySlug(slug);
+  const yoast = post.yoast_head_json;
+  const title = yoast?.title ?? stripHtml(post.title.rendered);
+  const description =
+    yoast?.description ?? stripHtml(post.excerpt.rendered ?? "");
+  const ogImages = getYoastImages(yoast?.og_image);
+  const twitterImage = getTwitterImage(yoast?.twitter_image);
+
+  return {
+    title,
+    description,
+    alternates: yoast?.canonical
+      ? {
+          canonical: yoast.canonical,
+        }
+      : undefined,
+    authors: yoast?.author
+      ? [
+          {
+            name: yoast.author,
+          },
+        ]
+      : undefined,
+    robots: getRobots(yoast?.robots),
+    openGraph: {
+      title: yoast?.og_title ?? title,
+      description: yoast?.og_description ?? description,
+      url: yoast?.og_url ?? yoast?.canonical,
+      siteName: yoast?.og_site_name,
+      locale: yoast?.og_locale,
+      type: yoast?.og_type === "article" ? "article" : "website",
+      publishedTime: yoast?.article_published_time,
+      modifiedTime: yoast?.article_modified_time,
+      authors: yoast?.author ? [yoast.author] : undefined,
+      images: ogImages?.length ? ogImages : undefined,
+    },
+    twitter: {
+      card:
+        yoast?.twitter_card === "summary_large_image"
+          ? "summary_large_image"
+          : "summary",
+      title: yoast?.twitter_title ?? yoast?.og_title ?? title,
+      description:
+        yoast?.twitter_description ?? yoast?.og_description ?? description,
+      images: twitterImage ? [twitterImage] : undefined,
+    },
+  };
 }
