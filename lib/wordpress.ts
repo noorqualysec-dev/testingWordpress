@@ -54,7 +54,7 @@ export interface WPPost {
 }
 
 const WORDPRESS_API_BASE =
-  "https://floralwhite-wombat-415522.hostingersite.com/wp-json/wp/v2";
+  "https://qualysec.com/wp-json/wp/v2";
 const WORDPRESS_FALLBACK_API_BASE = "https://qualysec.com/wp-json/wp/v2";
 const REVALIDATE_SECONDS = 60;
 const DEFAULT_POSTS_PER_PAGE = 10;
