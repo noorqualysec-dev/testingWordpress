@@ -45,7 +45,7 @@ export default async function WordPressPost({ slug }: WordPressPostProps) {
           </div>
         ) : null}
         <article
-          className="mt-8 space-y-6 text-lg leading-8 text-neutral-800 [&_a]:text-teal-700 [&_a]:underline [&_h2]:mt-10 [&_h2]:text-3xl [&_h2]:font-semibold [&_h3]:mt-8 [&_h3]:text-2xl [&_h3]:font-semibold [&_li]:ml-6 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-5 [&_strong]:font-semibold"
+          className="mt-8 space-y-6 text-lg leading-8 text-neutral-800 [&_a]:text-teal-700 [&_a]:underline [&_h2]:mt-10 [&_h2]:text-3xl [&_h2]:font-semibold [&_h3]:mt-8 [&_h3]:text-2xl [&_h3]:font-semibold [&_li]:ml-6 [&_li]:list-disc [&_ol_li]:list-decimal [&_p]:my-5 [&_strong]:font-semibold wordpress-content mt-8 text-lg leading-8 text-neutral-800"
           dangerouslySetInnerHTML={{ __html: post.content.rendered }}
         />
       </main>
