@@ -29,7 +29,7 @@ function getPageNumber(value: string | string[] | undefined) {
 }
 
 function getPageHref(page: number) {
-  return page === 1 ? "/blog" : `/blog?page=${page}`;
+  return page === 1 ? "/blogs" : `/blogs?page=${page}`;
 }
 
 function BlogPagination({
@@ -82,7 +82,7 @@ function BlogPagination({
 
 export default async function BlogPage({ searchParams }: BlogPageProps) {
   const currentPage = getPageNumber((await searchParams).page);
-  const { posts, totalPages, totalPosts } = await getPostsPage(currentPage, 10);
+  const { posts, totalPages, totalPosts } = await getPostsPage(currentPage, 9);
 
   return (
     <main className="mx-auto w-full max-w-6xl px-5 py-12 sm:py-16">
