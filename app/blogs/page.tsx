@@ -142,5 +142,6 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
 
       <BlogPagination currentPage={currentPage} totalPages={totalPages} />
     </main>
+    
   );
 }
