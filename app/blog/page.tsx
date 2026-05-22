@@ -107,7 +107,7 @@ export default async function BlogPage({ searchParams }: BlogPageProps) {
           return (
             <Link
               key={post.id}
-              href={`/blog/${post.slug}`}
+              href={`/${post.slug}`}
               className="group overflow-hidden rounded-lg border border-neutral-200 bg-white transition hover:-translate-y-1 hover:border-teal-600 hover:shadow-lg"
             >
               <div className="relative aspect-[16/10] bg-neutral-100">
